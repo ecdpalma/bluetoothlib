@@ -1,6 +1,13 @@
 <resources>
-    <string name="app_name">bluetoothlib</string>
+    <string name="app_name">bluetoothlib example</string>
 
-    <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+    <string name="scan">Scan</string>
+    <string name="scanning">Scanning</string>
+    <string name="connecting">Connecting</string>
+    <string name="error_cant_connect_to_bluetooth_device">Can\'t connect to bluetooth device</string>
+    <string name="bluetooth_device_disconnected">Bluetooth device disconnected</string>
+    <string name="connected">Connected</string>
+    <string name="pair">Pair</string>
+    <string name="unpair">Unpair</string>
 </resources>
