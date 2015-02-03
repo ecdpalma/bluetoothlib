@@ -16,7 +16,10 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.palmalabs.android.bluetooth.BluetoothService;
@@ -27,7 +30,8 @@ import java.util.List;
 public class MainActivity extends Activity implements
         BluetoothService.BluetoothDiscoveryListener,
         BluetoothService.BluetoothBondListener,
-        BluetoothService.BluetoothRfcommConnectionListener {
+        BluetoothService.BluetoothRfcommConnectionListener,
+        BluetoothService.BluetoothRfcommWriteListener {
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private ListView mBluetoothDeviceListView;
@@ -35,6 +39,10 @@ public class MainActivity extends Activity implements
     private BluetoothAdapter mBluetoothAdapter;
     private ProgressDialog mProgressDialog;
     private BluetoothService mBluetoothService;
+
+    private TextView mDeviceAddressTextView;
+    private EditText mDataEditText;
+    private Button mSendButton;
 
     private ServiceConnection mBluetoothServiceConnection = new ServiceConnection() {
 
@@ -53,6 +61,7 @@ public class MainActivity extends Activity implements
             mBluetoothService.setDiscoveryListener(MainActivity.this);
             mBluetoothService.setBondListener(MainActivity.this);
             mBluetoothService.setRfcommConnectionListener(MainActivity.this);
+            mBluetoothService.setRfcommWriteListener(MainActivity.this);
 
             List<BluetoothDevice> pairedDevices = mBluetoothService.getPairedDevices();
 
@@ -91,6 +100,25 @@ public class MainActivity extends Activity implements
                 }
             }
         });
+
+        mDeviceAddressTextView = (TextView) findViewById(R.id.text_view_device_address);
+        mDataEditText = (EditText) findViewById(R.id.edit_text_data);
+        mSendButton = (Button) findViewById(R.id.button_send);
+        mSendButton.setEnabled(false);
+        mSendButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String dataToSend = mDataEditText.getText().toString().trim();
+                if (dataToSend.length() > 0) {
+                    dataToSend = dataToSend + "\n";
+                    Intent intent = new Intent(MainActivity.this, BluetoothService.class);
+                    intent.setAction(BluetoothService.ACTION_RFCOMM_WRITE);
+                    intent.putExtra("device_address", mDeviceAddressTextView.getText().toString());
+                    intent.putExtra("data_bytes", dataToSend.getBytes());
+                    startService(intent);
+                }
+            }
+        });
     }
 
     @Override
@@ -115,6 +143,9 @@ public class MainActivity extends Activity implements
         }
         if (mBluetoothService.getRfcommConnectionListener() instanceof MainActivity) {
             mBluetoothService.setRfcommConnectionListener(null);
+        }
+        if (mBluetoothService.getRfcommWriteListener() instanceof MainActivity) {
+            mBluetoothService.setRfcommWriteListener(null);
         }
         unbindService(mBluetoothServiceConnection);
     }
@@ -199,7 +230,7 @@ public class MainActivity extends Activity implements
     }
 
     @Override
-    public void onRfcommConnectionEstablished(BluetoothDevice bluetoothDevice) {
+    public void onRfcommConnectionEstablished(final BluetoothDevice bluetoothDevice) {
         if (mProgressDialog != null && mProgressDialog.isShowing()) {
             mProgressDialog.dismiss();
         }
@@ -210,6 +241,8 @@ public class MainActivity extends Activity implements
                         getResources().getString(R.string.connected),
                         Toast.LENGTH_LONG)
                         .show();
+                mSendButton.setEnabled(true);
+                mDeviceAddressTextView.setText(bluetoothDevice.getAddress());
             }
         });
 
@@ -230,6 +263,42 @@ public class MainActivity extends Activity implements
                 Toast.makeText(MainActivity.this,
                         getString(R.string.bluetooth_device_disconnected),
                         Toast.LENGTH_LONG)
+                        .show();
+            }
+        });
+    }
+
+    @Override
+    public void onRfcommWriteStarted() {
+        Log.d(TAG, "onRfcommWriteStarted");
+    }
+
+    @Override
+    public void onRfcommWriteFinished() {
+        Log.d(TAG, "onRfcommWriteFinished");
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(MainActivity.this,
+                        getString(R.string.write_finished),
+                        Toast.LENGTH_SHORT)
+                        .show();
+                mDataEditText.setText("");
+            }
+        });
+    }
+
+    @Override
+    public void onRfcommWriteError() {
+        Log.d(TAG, "onRfcommWriteError");
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(MainActivity.this,
+                        getString(R.string.write_error),
+                        Toast.LENGTH_SHORT)
                         .show();
             }
         });
